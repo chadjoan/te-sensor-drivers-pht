@@ -925,8 +925,8 @@ enum ms8607_status psensor_read_eeprom_coeff(uint8_t command, uint16_t *coeff)
 		
 	*coeff = (buffer[0] << 8) | buffer[1];
     
-    if (*coeff == 0)
-        return ms8607_status_i2c_transfer_error;
+	if (*coeff == 0)
+		return ms8607_status_i2c_transfer_error;
 	
 	return ms8607_status_ok;	
 }
@@ -1050,8 +1050,8 @@ enum ms8607_status psensor_read_pressure_and_temperature( float *temperature, fl
 	if( status != ms8607_status_ok)
 		return status;
     
-    if (adc_temperature == 0 || adc_pressure == 0)
-        return ms8607_status_i2c_transfer_error;
+	if (adc_temperature == 0 || adc_pressure == 0)
+		return ms8607_status_i2c_transfer_error;
 
 	// Difference between actual and reference temperature = D2 - Tref
 	dT = (int32_t)adc_temperature - ( (int32_t)eeprom_coeff[REFERENCE_TEMPERATURE_INDEX] <<8 );
