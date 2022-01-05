@@ -46,7 +46,7 @@ extern "C" {
 #define HSENSOR_CONVERSION_TIME_12b                         16000
 #define HSENSOR_CONVERSION_TIME_10b                         5000
 #define HSENSOR_CONVERSION_TIME_8b                          3000
-#define HSENSOR_CONVERSION_TIME_11b                         9000    
+#define HSENSOR_CONVERSION_TIME_11b                         9000
 
 #define HSENSOR_RESET_TIME                                  15       // ms value
 
@@ -151,6 +151,83 @@ static enum ms8607_status psensor_conversion_and_read_adc(void *caller_context, 
 static bool psensor_crc_check (uint16_t *n_prom, uint8_t crc);
 enum ms8607_status psensor_read_pressure_and_temperature(void *caller_context, float *, float *);
 
+
+static enum ms8607_status
+	i2c_controller_read_unimpl(void *caller_context, ms8607_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return ms8607_status_i2c_read_unimplemented;
+}
+
+static enum ms8607_status
+	i2c_controller_write_unimpl(void *caller_context, ms8607_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return ms8607_status_i2c_write_unimplemented;
+}
+
+static enum ms8607_status
+	i2c_controller_write_no_stop_unimpl(void *caller_context, ms8607_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return ms8607_status_i2c_write_no_stop_unimplemented;
+}
+
+static enum ms8607_status
+	sleep_ms_unimpl(void *caller_context, uint32_t milliseconds)
+{
+	(void)caller_context;
+	(void)milliseconds;
+	return ms8607_status_sleep_ms_unimplemented;
+}
+
+void ms8607_init_dependencies(ms8607_dependencies *deps)
+{
+	deps->i2c_controller_read           = &i2c_controller_read_unimpl;
+	deps->i2c_controller_write          = &i2c_controller_write_unimpl;
+	deps->i2c_controller_write_no_stop  = &i2c_controller_write_no_stop_unimpl;
+	deps->sleep_ms                      = &sleep_ms_unimpl;
+}
+
+#if 0
+static enum ms8607_status  ms8607_validate_mandatory_depends(ms8607_dependencies *deps)
+{
+	if ( deps->i2c_controller_read == NULL
+	||   deps->i2c_controller_read == &i2c_controller_read_unimpl )
+		return ms8607_status_i2c_read_unimplemented;
+	else
+	if ( deps->i2c_controller_write == NULL
+	||   deps->i2c_controller_write == &i2c_controller_write_unimpl )
+		return ms8607_status_i2c_write_unimplemented;
+	/*
+	// It's actually OK to be missing the `i2c_controller_write_no_stop` function.
+	// The write-no-stop function is only needed for hold-mode ADC.
+	// So we shouldn't validate this one until the caller actually tries to
+	// use the hold-mode feature. In most cases, the caller won't need this,
+	// and in some of those cases, the caller *can't* provide this (ex:
+	// because their MCU's I2C peripheral doesn't allow sending a transmit
+	// sequence without the trailing `stop` bit).
+	// TODO: Maybe a -D macro could be provided to enable early checking of this?
+	// TODO: Sort of like USE-flags on Gentoo systems... USE_HOLD implies RDEPENDS={$RDEPENDS, write-no-stop}
+	else
+	if ( deps->i2c_controller_write_no_stop == NULL
+	||   deps->i2c_controller_write_no_stop == &i2c_controller_write_no_stop_unimpl )
+		return ms8607_status_i2c_write_no_stop_unimplemented;
+	*/
+	else
+	if ( deps->sleep_ms == NULL
+	||   deps->sleep_ms == &sleep_ms_unimpl )
+		return ms8607_status_sleep_ms_unimplemented;
+	else
+	{
+		return ms8607_status_ok;
+	}
+}
+#endif
+
 /**
  * \brief Configures the caller's I2C controller to be used with the MS8607 device.
  *
@@ -161,10 +238,16 @@ void ms8607_init(const ms8607_dependencies* deps)
 	hsensor_i2c_master_mode = ms8607_i2c_no_hold;
 	psensor_resolution_osr = ms8607_pressure_resolution_osr_8192;
 
-	depends.i2c_controller_read_packet          = deps->i2c_controller_read_packet;
-	depends.i2c_controller_write_packet         = deps->i2c_controller_write_packet;
-	depends.i2c_controller_write_packet_no_stop = deps->i2c_controller_write_packet_no_stop;
-	depends.delay_ms                            = deps->delay_ms;
+	// TODO: This should probably go into an init function for sensor objects,
+	//   once we have that functionality.
+	//  status = ms8607_validate_mandatory_depends(deps);
+	//  if ( status != ms8607_status_ok )
+	//  	return status;
+
+	depends.i2c_controller_read          = deps->i2c_controller_read;
+	depends.i2c_controller_write         = deps->i2c_controller_write;
+	depends.i2c_controller_write_no_stop = deps->i2c_controller_write_no_stop;
+	depends.sleep_ms                     = deps->sleep_ms;
 }
 
 /**
@@ -443,7 +526,7 @@ bool hsensor_is_connected(void* caller_context)
 		.data        = NULL,
 	};
 	/* Do the transfer */
-	status = depends.i2c_controller_write_packet(caller_context, &transfer);
+	status = depends.i2c_controller_write(caller_context, &transfer);
 	if( status != ms8607_status_ok)
 		return false;
 
@@ -466,7 +549,7 @@ enum ms8607_status  hsensor_reset(void* caller_context)
 		return status;
 
 	hsensor_conversion_time = HSENSOR_CONVERSION_TIME_12b;
-	depends.delay_ms(caller_context, HSENSOR_RESET_TIME);
+	depends.sleep_ms(caller_context, HSENSOR_RESET_TIME);
 
 	return ms8607_status_ok;
 }
@@ -493,7 +576,7 @@ enum ms8607_status hsensor_write_command(void *caller_context, uint8_t cmd)
 	};
 
 	/* Do the transfer */
-	return depends.i2c_controller_write_packet(caller_context, &transfer);
+	return depends.i2c_controller_write(caller_context, &transfer);
 }
 
 /**
@@ -519,7 +602,7 @@ enum ms8607_status hsensor_write_command_no_stop(void *caller_context, uint8_t c
 	};
 	
 	/* Do the transfer */
-	return depends.i2c_controller_write_packet_no_stop(caller_context, &transfer);
+	return depends.i2c_controller_write_no_stop(caller_context, &transfer);
 }
 
 /**
@@ -583,7 +666,7 @@ enum ms8607_status hsensor_read_user_register(void *caller_context, uint8_t *val
 	if( status != ms8607_status_ok )
 		return status;
 
-	status = depends.i2c_controller_read_packet(caller_context, &read_transfer);
+	status = depends.i2c_controller_read(caller_context, &read_transfer);
 	if ( status != ms8607_status_ok )
 		return status;
 
@@ -627,7 +710,7 @@ enum ms8607_status hsensor_write_user_register(void *caller_context, uint8_t val
 	};
 	
 	/* Do the transfer */
-	return depends.i2c_controller_write_packet(caller_context, &transfer);
+	return depends.i2c_controller_write(caller_context, &transfer);
 }
 
 /**
@@ -664,12 +747,12 @@ enum ms8607_status hsensor_humidity_conversion_and_read_adc(void *caller_context
 	else {
 		status = hsensor_write_command(caller_context, HSENSOR_READ_HUMIDITY_WO_HOLD_COMMAND);
 		// delay depending on resolution
-		depends.delay_ms(caller_context, hsensor_conversion_time/1000);
+		depends.sleep_ms(caller_context, hsensor_conversion_time/1000);
 	}
 	if( status != ms8607_status_ok)
 		return status;
 		
-    status = depends.i2c_controller_read_packet(caller_context, &read_transfer);
+    status = depends.i2c_controller_read(caller_context, &read_transfer);
 	if( status != ms8607_status_ok)
 		return status;
 
@@ -782,7 +865,7 @@ bool psensor_is_connected(void* caller_context)
 	};
 
 	/* Do the transfer */
-	status = depends.i2c_controller_write_packet(caller_context, &transfer);
+	status = depends.i2c_controller_write(caller_context, &transfer);
 	if( status != ms8607_status_ok)
 		return false;
 	
@@ -822,7 +905,7 @@ enum ms8607_status psensor_write_command(void *caller_context, uint8_t cmd)
 		.data        = data,
 	};
 	/* Do the transfer */
-	return depends.i2c_controller_write_packet(caller_context, &transfer);
+	return depends.i2c_controller_write(caller_context, &transfer);
 }
 
 /**
@@ -872,7 +955,7 @@ enum ms8607_status psensor_read_eeprom_coeff(void *caller_context, uint8_t comma
 	if(status != ms8607_status_ok)
 		return status;
 	
-	status = depends.i2c_controller_read_packet(caller_context, &read_transfer);
+	status = depends.i2c_controller_read(caller_context, &read_transfer);
 	if(status != ms8607_status_ok)
 		return status;
 		
@@ -952,7 +1035,7 @@ static enum ms8607_status psensor_conversion_and_read_adc(void *caller_context, 
 
 	status = psensor_write_command(caller_context, cmd);
 	// 20ms wait for conversion
-	depends.delay_ms(caller_context, psensor_conversion_time[ (cmd & PSENSOR_CONVERSION_OSR_MASK)/2 ]/1000 );
+	depends.sleep_ms(caller_context, psensor_conversion_time[ (cmd & PSENSOR_CONVERSION_OSR_MASK)/2 ]/1000 );
 	if( status != ms8607_status_ok)
 		return status;
 
@@ -961,7 +1044,7 @@ static enum ms8607_status psensor_conversion_and_read_adc(void *caller_context, 
 	if( status != ms8607_status_ok)
 		return status;
 	
-    status = depends.i2c_controller_read_packet(caller_context, &read_transfer);
+    status = depends.i2c_controller_read(caller_context, &read_transfer);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -1122,6 +1205,22 @@ const char *ms8607_stringize_error(enum ms8607_status error_code)
 
 		case ms8607_status_heater_on_error:
 			return "Cannot compute compensated humidity because heater is on. (ms8607_status_heater_on_error)";
+
+		case ms8607_status_i2c_read_unimplemented:
+			return "An implementation for the `ms8607_dependencies.i2c_controller_read`"
+				" function was not provided, but was needed to complete an operation.";
+
+		case ms8607_status_i2c_write_unimplemented:
+			return "An implementation for the `ms8607_dependencies.i2c_controller_write`"
+				" function was not provided, but was needed to complete an operation.";
+
+		case ms8607_status_i2c_write_no_stop_unimplemented:
+			return "An implementation for the `ms8607_dependencies.i2c_controller_write_no_stop`"
+				" function was not provided, but was needed to complete an operation.";
+
+		case ms8607_status_sleep_ms_unimplemented:
+			return "An implementation for the `ms8607_dependencies.sleep_ms`"
+				" function was not provided, but was needed to complete an operation.";
 
 		default: break;
 	}

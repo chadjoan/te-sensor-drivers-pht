@@ -22,12 +22,16 @@ enum ms8607_humidity_i2c_master_mode {
 };
 
 enum ms8607_status {
-	ms8607_status_ok,
+	ms8607_status_ok = 0,
 	ms8607_status_error_within_callback,
 	ms8607_status_eeprom_is_zero, // Formerly ms8607_status_crc_error
 	ms8607_status_eeprom_crc_error, // Formerly ms8607_status_crc_error
 	ms8607_status_measurement_invalid, // Formerly ms8607_status_i2c_transfer_error
 	ms8607_status_heater_on_error,
+	ms8607_status_i2c_read_unimplemented,
+	ms8607_status_i2c_write_unimplemented,
+	ms8607_status_i2c_write_no_stop_unimplemented,
+	ms8607_status_sleep_ms_unimplemented
 };
 
 enum ms8607_humidity_resolution {
@@ -57,6 +61,7 @@ enum ms8607_pressure_resolution {
 };
 
 // Structs
+
 /**
  * \brief  This structure is used by the MS8607 driver to specify I2C transfers
  *         for the callbacks that implement I2C functionality for the driver.
@@ -113,7 +118,7 @@ typedef struct ms8607_dependencies {
 	 *        - ms8607_status_ok : I2C transfer completed successfully
 	 *        - ms8607_status_error_within_callback : Problem with i2c transfer
 	 */
-	enum ms8607_status  (*i2c_controller_read_packet)(void *caller_context, ms8607_i2c_controller_packet *const);
+	enum ms8607_status  (*i2c_controller_read)(void *caller_context, ms8607_i2c_controller_packet *const);
 
 	/**
 	 * \brief   Callback that shall implement I2C packet writing (trasmit|tx) functionality.
@@ -130,7 +135,7 @@ typedef struct ms8607_dependencies {
 	 *        - ms8607_status_ok : I2C transfer completed successfully
 	 *        - ms8607_status_error_within_callback : Problem with i2c transfer
 	 */
-	enum ms8607_status  (*i2c_controller_write_packet)(void *caller_context, ms8607_i2c_controller_packet *const);
+	enum ms8607_status  (*i2c_controller_write)(void *caller_context, ms8607_i2c_controller_packet *const);
 
 	/**
 	 * \brief   Callback that shall implement I2C packet writing (trasmit|tx) functionality,
@@ -155,7 +160,7 @@ typedef struct ms8607_dependencies {
 	 *        - ms8607_status_ok : I2C transfer completed successfully
 	 *        - ms8607_status_error_within_callback : Problem with i2c transfer
 	 */
-	enum ms8607_status  (*i2c_controller_write_packet_no_stop)(void *caller_context, ms8607_i2c_controller_packet *const);
+	enum ms8607_status  (*i2c_controller_write_no_stop)(void *caller_context, ms8607_i2c_controller_packet *const);
 
 	/**
 	 * \brief   Callback that shall wait for the given number of milliseconds when called.
@@ -165,10 +170,16 @@ typedef struct ms8607_dependencies {
 	 *          processors), then it is perfectly acceptable to yield this time
 	 *          to other threads or fibers.
 	 */
-	void                (*delay_ms)(void *caller_context, uint32_t milliseconds); // TODO: this might disappear after the driver implements proper polling primitives
+	enum ms8607_status  (*sleep_ms)(void *caller_context, uint32_t milliseconds);
 } ms8607_dependencies;
 
 // Functions
+
+/**
+ * \brief Initializes the `ms8607_dependencies` struct; this should be called
+ *        *before* assigning function pointers into the structure.
+ */
+void ms8607_init_dependencies(ms8607_dependencies *depends);
 
 /**
  * \brief Configures the caller's I2C controller to be used with the MS8607 device.
