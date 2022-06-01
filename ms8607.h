@@ -627,7 +627,7 @@ enum ms8607_status ms8607_get_dew_point(ms8607_sensor *sensor, float, float, flo
 ///
 const char *ms8607_stringize_error(enum ms8607_status error_code);
 
-
+#if 0
 // TODO: remove?
 enum ms8607_status hsensor_poll_relative_humidity(ms8607_sensor *sensor, float *humidity, void *caller_context);
 enum ms8607_status hsensor_write_command(ms8607_sensor *sensor, uint8_t, void *caller_context);
@@ -635,8 +635,26 @@ enum ms8607_status psensor_request_temperature(ms8607_sensor *sensor, uint64_t m
 enum ms8607_status psensor_poll_raw_temperature(ms8607_sensor *sensor, uint64_t microsecs, uint32_t *temperature, void *caller_context);
 enum ms8607_status psensor_request_pressure(ms8607_sensor *sensor, uint64_t microsecs, void *caller_context);
 enum ms8607_status psensor_poll_raw_pressure(ms8607_sensor *sensor, uint64_t microsecs, uint32_t *pressure, void *caller_context);
+#endif
 
-
-enum ms8607_status hsensor_read_user_register(ms8607_sensor *sensor, uint8_t *value, void *caller_context);
+/// \brief   Reads the MS8607 humidity user register.
+///
+/// \details The user register is described in the datasheet.
+///          It is unnecessary to call this function to use the ms8607 sensor,
+///          but it could be useful as a diagnostic tool or for better
+///          understanding the behavior of the ms8607.
+///
+/// \param[in] ms8607_sensor *sensor : Object representing the sensor to read the user register from
+/// \param[out] uint8_t* : Storage of user register value
+/// \param[in] void* caller_context : When this function calls any callbacks
+///         from the `ms8607_host_functions` structure, this will be passed
+///         directly to those callbacks' `caller_context` parameter.
+///
+/// \return ms8607_status : status of MS8607
+///       - ms8607_status_ok : I2C transfer completed successfully
+///       - ms8607_status_null_sensor : The pointer provided for the `new_sensor` parameter was NULL.
+///       - ms8607_status_callback_error : Error occurred within a ms8607_host_functions function
+///
+enum ms8607_status ms8607_hsensor_read_user_register(ms8607_sensor *sensor, uint8_t *value, void *caller_context);
 
 #endif /* MS8607_H_INCLUDED */

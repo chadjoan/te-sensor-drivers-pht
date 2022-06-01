@@ -121,10 +121,9 @@ static uint32_t psensor_conversion_time[6] = {
 // humidity sensor functions
 static enum ms8607_status hsensor_reset(ms8607_sensor *sensor, void* caller_context);
 static bool hsensor_is_connected(ms8607_sensor *sensor, void* caller_context);
-enum ms8607_status hsensor_write_command(ms8607_sensor *sensor, uint8_t, void *caller_context);
+static enum ms8607_status hsensor_write_command(ms8607_sensor *sensor, uint8_t, void *caller_context);
 static enum ms8607_status hsensor_write_command_no_stop(ms8607_sensor *sensor, uint8_t, void *caller_context);
 static enum ms8607_status hsensor_crc_check( uint16_t, uint8_t);
-//static enum ms8607_status hsensor_read_user_register(ms8607_sensor *sensor, uint8_t *, void *caller_context);
 static enum ms8607_status hsensor_write_user_register(ms8607_sensor *sensor, uint8_t, void *caller_context);
 static enum ms8607_status hsensor_humidity_conversion_and_read_adc(ms8607_sensor *sensor, uint16_t *, void *caller_context);
 static enum ms8607_status hsensor_read_relative_humidity(ms8607_sensor *sensor, int32_t *, void *caller_context);
@@ -137,7 +136,7 @@ static enum ms8607_status psensor_read_eeprom_coeff(ms8607_sensor *sensor, uint8
 static enum ms8607_status psensor_read_eeprom(ms8607_sensor *sensor, void *caller_context);
 static enum ms8607_status psensor_conversion_and_read_adc(ms8607_sensor *sensor, uint8_t, uint32_t *, void *caller_context);
 static bool psensor_crc_check (uint16_t *n_prom, uint8_t crc);
-enum ms8607_status psensor_read_pressure_and_temperature(ms8607_sensor *sensor, int32_t *, int32_t *, void *caller_context);
+static enum ms8607_status psensor_read_pressure_and_temperature(ms8607_sensor *sensor, int32_t *, int32_t *, void *caller_context);
 
 static enum ms8607_status
 	i2c_controller_read_unimpl(void *caller_context, ms8607_i2c_controller_packet *const packet)
@@ -528,7 +527,7 @@ enum ms8607_status ms8607_set_humidity_resolution(
 		conversion_time = HSENSOR_CONVERSION_TIME_11b;
 	}
 
-	status = hsensor_read_user_register(sensor, &reg_value, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg_value, caller_context);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -674,7 +673,7 @@ enum ms8607_status ms8607_get_battery_status(ms8607_sensor *sensor, enum ms8607_
 	enum ms8607_status  status;
 	uint8_t reg_value;
 
-	status = hsensor_read_user_register(sensor, &reg_value, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg_value, caller_context);
 	if( status != ms8607_status_ok)
 		return status;
 
@@ -706,7 +705,7 @@ enum ms8607_status ms8607_enable_heater(ms8607_sensor *sensor, void* caller_cont
 	enum ms8607_status status;
 	uint8_t reg_value;
 
-	status = hsensor_read_user_register(sensor, &reg_value, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg_value, caller_context);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -737,7 +736,7 @@ enum ms8607_status ms8607_disable_heater(ms8607_sensor *sensor, void* caller_con
 	enum ms8607_status status;
 	uint8_t reg_value;
 
-	status = hsensor_read_user_register(sensor, &reg_value, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg_value, caller_context);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -771,7 +770,7 @@ enum ms8607_status ms8607_get_heater_status(ms8607_sensor *sensor, enum ms8607_h
 	enum ms8607_status status;
 	uint8_t reg_value;
 
-	status = hsensor_read_user_register(sensor, &reg_value, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg_value, caller_context);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -852,7 +851,7 @@ static enum ms8607_status  hsensor_reset(ms8607_sensor *sensor, void* caller_con
 ///       - ms8607_status_null_sensor : The pointer provided for the `new_sensor` parameter was NULL.
 ///       - ms8607_status_callback_error : Error occurred within a ms8607_host_functions function
 ///
-/*static*/ enum ms8607_status hsensor_write_command(ms8607_sensor *sensor, uint8_t cmd, void *caller_context)
+static enum ms8607_status hsensor_write_command(ms8607_sensor *sensor, uint8_t cmd, void *caller_context)
 {
 	assert( sensor != NULL );
 
@@ -931,7 +930,12 @@ static enum ms8607_status hsensor_crc_check( uint16_t value, uint8_t crc)
 		return ms8607_status_measurement_invalid;
 }
 
-/// \brief Reads the MS8607 humidity user register.
+/// \brief   Reads the MS8607 humidity user register.
+///
+/// \details The "user" register is described in the datasheet.
+///          It is unnecessary to call this function to use the ms8607 sensor,
+///          but it could be useful as a diagnostic tool or for better
+///          understanding the behavior of the ms8607.
 ///
 /// \param[in] ms8607_sensor *sensor : Object representing the sensor to read the user register from
 /// \param[out] uint8_t* : Storage of user register value
@@ -941,9 +945,9 @@ static enum ms8607_status hsensor_crc_check( uint16_t value, uint8_t crc)
 ///
 /// \return ms8607_status : status of MS8607
 ///       - ms8607_status_ok : I2C transfer completed successfully
+///       - ms8607_status_null_sensor : The pointer provided for the `new_sensor` parameter was NULL.
 ///       - ms8607_status_callback_error : Error occurred within a ms8607_host_functions function
-///
-/*static*/ enum ms8607_status hsensor_read_user_register(ms8607_sensor *sensor, uint8_t *value, void *caller_context)
+enum ms8607_status ms8607_hsensor_read_user_register(ms8607_sensor *sensor, uint8_t *value, void *caller_context)
 {
 	assert( sensor != NULL );
 	assert( value != NULL );
@@ -994,7 +998,7 @@ static enum ms8607_status hsensor_write_user_register(ms8607_sensor *sensor, uin
 	uint8_t reg;
 	uint8_t data[2];
 
-	status = hsensor_read_user_register(sensor, &reg, caller_context);
+	status = ms8607_hsensor_read_user_register(sensor, &reg, caller_context);
 	if( status != ms8607_status_ok )
 		return status;
 
@@ -1080,10 +1084,10 @@ static enum ms8607_status hsensor_humidity_conversion_and_read_adc(ms8607_sensor
 		if( status != ms8607_status_ok)
 			return status;
 
-		/*
+
 		// delay depending on resolution
-		sensor->host_funcs->sleep_ms(caller_context, hsensor_conversion_time/1000);
-		*/
+		sensor->host_funcs->sleep_ms(caller_context, sensor->hsensor_conversion_time/1000);
+
 		while (true)
 		{
 			status = sensor->host_funcs->i2c_controller_read(caller_context, &read_transfer);
@@ -1145,6 +1149,7 @@ static enum ms8607_status hsensor_read_relative_humidity(ms8607_sensor *sensor, 
 	return status;
 }
 
+#if 0
 // TODO: remove?
 /*static*/ enum ms8607_status hsensor_poll_relative_humidity(ms8607_sensor *sensor, float *humidity, void *caller_context)
 {
@@ -1191,6 +1196,7 @@ static enum ms8607_status hsensor_read_relative_humidity(ms8607_sensor *sensor, 
 
 	return status;
 }
+#endif
 
 /// \brief Returns result of compensated humidity
 ///        Note : This function shall only be used when the heater is OFF. It will return an error otherwise.
@@ -1553,7 +1559,7 @@ static enum ms8607_status psensor_conversion_and_read_adc(ms8607_sensor *sensor,
 ///       - ms8607_status_eeprom_crc_error : CRC check error on the sensor's EEPROM coefficients
 ///       - ms8607_status_measurement_invalid : EEPROM is OK and I2C transfer completed, but data received was invalid
 ///
-/*static*/ enum ms8607_status psensor_read_pressure_and_temperature(ms8607_sensor *sensor, int32_t *temperature, int32_t *pressure, void *caller_context)
+static enum ms8607_status psensor_read_pressure_and_temperature(ms8607_sensor *sensor, int32_t *temperature, int32_t *pressure, void *caller_context)
 {
 	assert( sensor      != NULL );
 	assert( temperature != NULL );
@@ -1636,7 +1642,35 @@ static enum ms8607_status psensor_conversion_and_read_adc(ms8607_sensor *sensor,
 	return status;
 }
 
+#if 0
 // TODO: remove?
+// (I was trying to write a polling interface for the driver.
+// It has merits, at least from the perspective of an ideal generalized
+// sensor API or Hardware Abstraction Layer (HAL).
+// I don't have time to write said HAL right now, so I'm going to avoid it.
+// The other potential merit was that polling the sensor for NACK responses
+// might yield values faster than waiting for a constant amount of time
+// between request and read. In reality, I don't think it helped much,
+// and it might have even been a hindrance, since the polling frequency
+// was severely limited and could easily overshoot, IIRC.
+// It'd still be good at an API level, but the driver would need a state-machine
+// (probably), and it would want to use the well-tuned time-constants as
+// it's first guess for when to actually communicate with the sensor and
+// ask "are you done yet?". Then you'd get a bunch of delicious non-blocking
+// functions that could operate in parallel, which is great, even if it
+// doesn't make individual readings happen any faster. And it'd dovetail
+// into a nice API that could be used for other sensors. Maybe someday.)
+//
+// Other important note: this was hacked together quickly so I could run
+// experiments, and so it has global state outside of the ms8607_sensor struct.
+// That's bad and mean and shouldn't be part of the experience when using
+// this driver, so please leave this reference code commented out unless
+// you are going to finish my original visions, or at least remove the
+// global state and deduplicate the contents of these functions from
+// the places I copied them from. (The global state makes it impossible
+// to, without spurious unexpected behavior, use more than one ms8607 sensor
+// at the same time.)
+//
 static uint64_t ms8607_time_of_last_temperature_request = 0;
 
 enum ms8607_status psensor_request_temperature(ms8607_sensor *sensor, uint64_t microsecs, void *caller_context)
@@ -1762,6 +1796,7 @@ enum ms8607_status psensor_poll_raw_pressure(ms8607_sensor *sensor, uint64_t mic
 
 	return status;
 }
+#endif
 
 /// \brief CRC check
 ///
