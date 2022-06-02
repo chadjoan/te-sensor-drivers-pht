@@ -1801,7 +1801,7 @@ enum ms8607_status psensor_poll_raw_pressure(ms8607_sensor *sensor, uint64_t mic
 ///
 /// \return bool : TRUE if CRC is OK, FALSE if KO
 ///
-bool psensor_crc_check (uint16_t *n_prom, uint8_t crc)
+static bool psensor_crc_check (uint16_t *n_prom, uint8_t crc)
 {
 	assert( n_prom != NULL );
 	uint8_t cnt, n_bit;
