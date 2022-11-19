@@ -1,7 +1,15 @@
-# MS8607 Generic C Driver
-Generic C driver for the [MS8607 sensor](http://www.te.com/usa-en/product-CAT-BLPS0018.html)
+# C Driver for TE Connectivity PHT sensors
+
+C driver for sensors made by TE Connectivity, including the
+[MS8607 sensor](http://www.te.com/usa-en/product-CAT-BLPS0018.html) and the
+[MS5840 sensor](https://www.te.com/usa-en/product-20000980-00.html).
 
 ![ms8607](http://www.te.com/content/dam/te-com/catalog/part/CAT/BLP/S00/CAT-BLPS0018-t1.jpg/jcr:content/renditions/product-details.png)
+
+This set of drivers is based on the [MS8607 sensor driver](https://github.com/TEConnectivity/MS8607_Generic_C_Driver)
+originally provided by TE Connectivity, but it has undergone modifications
+(ex: removing global state, using callbacks for host integration, support
+MS5840 sensor), so it isn't an official driver (or drivers).
 
 MS8607 sensor is a self-contained pressure, humidity and temperature sensor that is fully calibrated during manufacture. The sensor can operate from 1.5V to 3.6V. The MS8607 is ideal for weather station applications embedded into compact devices and any applications in which pressure, humidity and temperature monitoring is required.
 
