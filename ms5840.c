@@ -69,10 +69,12 @@ static tepht_error_info  psensor_read_pressure_and_temperature(ms5840_sensor *se
 
 
 static const char *ms5840_get_device_model_name(void *ms5840_sensor) {
+	(void)ms5840_sensor;
 	return "MS5840";
 }
 
 static const char *ms5840_get_driver_prefix(void *ms5840_sensor) {
+	(void)ms5840_sensor;
 	return "ms5840";
 }
 

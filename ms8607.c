@@ -141,10 +141,12 @@ static bool              psensor_crc_check (uint16_t *n_prom, uint8_t crc);
 static tepht_error_info  psensor_read_pressure_and_temperature(ms8607_sensor *sensor, int32_t *, int32_t *, void *caller_context);
 
 static const char *ms8607_get_device_model_name(void *ms8607_sensor) {
+	(void)ms8607_sensor;
 	return "MS8607";
 }
 
 static const char *ms8607_get_driver_prefix(void *ms8607_sensor) {
+	(void)ms8607_sensor;
 	return "ms8607";
 }
 
