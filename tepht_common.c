@@ -46,7 +46,7 @@ static char *tepht_uint64_to_string_impl(uint64_t num, uint8_t base, char *buffe
 	// Write the number out.
 	// This will put it out in reverse order, so we'll have to reverse it later.
 	size_t digitStart = i;
-	while(num > 0)
+	while(num > 0 && i < (buflen-1))
 	{
 		uint8_t digit = (uint8_t)(num % base);
 		num /= base;
@@ -118,6 +118,7 @@ char *tepht_int64_to_string(int64_t num, uint8_t base, char *buffer, size_t bufl
 	assert( 2 <= base && base <= 36 );
 
 	assert(buffer != NULL);
+	assert(buflen >= 65 || base !=  2); // 1 sign + 63 bits + 1 null terminator
 	assert(buflen >= 21 || base != 10); // 1 sign + 19 digits + 1 null terminator
 	assert(buflen >= 18 || base != 16); // 1 sign + 16 hexadigits + 1 null terminator
 
@@ -181,6 +182,7 @@ char *tepht_uint64_to_string(uint64_t num, uint8_t base, char *buffer, size_t bu
 	assert( 2 <= base && base <= 36 );
 
 	assert(buffer != NULL);
+	assert(buflen >= 65 || base !=  2); // 64 bits + 1 null terminator
 	assert(buflen >= 21 || base != 10); // 20 digits + 1 null terminator
 	assert(buflen >= 17 || base != 16); // 16 hexadigits + 1 null terminator
 
@@ -237,8 +239,9 @@ char *tepht_uint64_to_hex(uint64_t num, char *buffer, size_t buflen, size_t *out
 
 static void unittest_int_to_str(tepht_string_printer  *printer)
 {
-	char buffer[32];
+	char buffer[72];
 	size_t buflen = sizeof(buffer);
+	size_t outlen = 0;
 
 	tepht_print_array_string(printer, "  unittest_int_to_str, for the tepht_int64_to_string(...) function:");
 
@@ -249,26 +252,42 @@ static void unittest_int_to_str(tepht_string_printer  *printer)
 	assert(0 == strcmp(tepht_int64_to_dec(-8 , buffer, buflen, NULL), "-8" ));
 	assert(0 == strcmp(tepht_int64_to_dec(-32, buffer, buflen, NULL), "-32"));
 
-	assert(0 == strcmp(tepht_int64_to_hex(0  , buffer, buflen, NULL), "0"  ));
-	assert(0 == strcmp(tepht_int64_to_hex(-0 , buffer, buflen, NULL), "0"  ));
-	assert(0 == strcmp(tepht_int64_to_hex(32 , buffer, buflen, NULL), "20" ));
-	assert(0 == strcmp(tepht_int64_to_hex(31 , buffer, buflen, NULL), "1F" ));
-	assert(0 == strcmp(tepht_int64_to_hex(-8 , buffer, buflen, NULL), "-8" ));
-	assert(0 == strcmp(tepht_int64_to_hex(-32, buffer, buflen, NULL), "-20"));
+	assert(0 == strcmp(tepht_int64_to_dec(0  , buffer, buflen, &outlen), "0"  )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_dec(-0 , buffer, buflen, &outlen), "0"  )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_dec(32 , buffer, buflen, &outlen), "32" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_dec(31 , buffer, buflen, &outlen), "31" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_dec(-8 , buffer, buflen, &outlen), "-8" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_dec(-32, buffer, buflen, &outlen), "-32")); assert(outlen == 3);
 
-	assert(0 == strcmp(tepht_int64_to_hex(10, buffer, buflen, NULL), "A"));
-	assert(0 == strcmp(tepht_int64_to_hex(11, buffer, buflen, NULL), "B"));
-	assert(0 == strcmp(tepht_int64_to_hex(12, buffer, buflen, NULL), "C"));
-	assert(0 == strcmp(tepht_int64_to_hex(13, buffer, buflen, NULL), "D"));
-	assert(0 == strcmp(tepht_int64_to_hex(14, buffer, buflen, NULL), "E"));
-	assert(0 == strcmp(tepht_int64_to_hex(15, buffer, buflen, NULL), "F"));
+	assert(0 == strcmp(tepht_int64_to_hex(0  , buffer, buflen, &outlen), "0"  )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(-0 , buffer, buflen, &outlen), "0"  )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(32 , buffer, buflen, &outlen), "20" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_hex(31 , buffer, buflen, &outlen), "1F" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_hex(-8 , buffer, buflen, &outlen), "-8" )); assert(outlen == 2);
+	assert(0 == strcmp(tepht_int64_to_hex(-32, buffer, buflen, &outlen), "-20")); assert(outlen == 3);
 
-	assert(0 == strcmp(tepht_int64_to_binary(0  , buffer, buflen, NULL), "0"      ));
-	assert(0 == strcmp(tepht_int64_to_binary(-0 , buffer, buflen, NULL), "0"      ));
-	assert(0 == strcmp(tepht_int64_to_binary(32 , buffer, buflen, NULL), "100000" ));
-	assert(0 == strcmp(tepht_int64_to_binary(31 , buffer, buflen, NULL), "11111"  ));
-	assert(0 == strcmp(tepht_int64_to_binary(-8 , buffer, buflen, NULL), "-1000"  ));
-	assert(0 == strcmp(tepht_int64_to_binary(-32, buffer, buflen, NULL), "-100000"));
+	assert(0 == strcmp(tepht_int64_to_hex(10, buffer, buflen, &outlen), "A")); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(11, buffer, buflen, &outlen), "B")); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(12, buffer, buflen, &outlen), "C")); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(13, buffer, buflen, &outlen), "D")); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(14, buffer, buflen, &outlen), "E")); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_hex(15, buffer, buflen, &outlen), "F")); assert(outlen == 1);
+
+	assert(0 == strcmp(tepht_int64_to_binary(0  , buffer, buflen, &outlen), "0"      )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_binary(-0 , buffer, buflen, &outlen), "0"      )); assert(outlen == 1);
+	assert(0 == strcmp(tepht_int64_to_binary(32 , buffer, buflen, &outlen), "100000" )); assert(outlen == 6);
+	assert(0 == strcmp(tepht_int64_to_binary(31 , buffer, buflen, &outlen), "11111"  )); assert(outlen == 5);
+	assert(0 == strcmp(tepht_int64_to_binary(-8 , buffer, buflen, &outlen), "-1000"  )); assert(outlen == 5);
+	assert(0 == strcmp(tepht_int64_to_binary(-32, buffer, buflen, &outlen), "-100000")); assert(outlen == 7);
+
+	// Test what happens if we force an overflow/truncation.
+	char buffer3[3];
+	const char *outstr = NULL;
+	outstr = tepht_uint64_to_string_impl(123, 10, buffer3, 3, &outlen);
+	assert(outlen == 2);
+	assert(outstr[0] == '2');
+	assert(outstr[1] == '3');
+	assert(outstr[2] == '\0');
 
 	tepht_print_array_string(printer, "  Passed.\n");
 }
