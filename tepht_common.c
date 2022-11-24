@@ -316,6 +316,65 @@ size_t tepht_print_uint64_as_dec(tepht_string_printer  *printer, uint64_t number
 	return len;
 }
 
+#if 0
+// This could be a powerful way to store file/line/function info in
+// a compiler-and-platform-independent way, but right-sizing the arrays
+// is too tricky for now. 
+static const char *tepht_filenames[64];
+static const char *tepht_function_names[196];
+
+#if 0
+typedef struct tepht_debug_frame {
+	uint16_t  word1;
+	uint16_t  word2;
+	uint16_t  word3;
+} tepht_debug_frame;
+
+static tepht_debug_frame  tepht_debug_frame[TEPHT_DEBUG_FRAME_DB_ROW_CAPACITY];
+
+#define tepht_dframe_to_u64(dframe) ( \
+	((uint64_t)(dframe.word1) <<  0) | \
+	((uint64_t)(dframe.word2) << 16) | \
+	((uint64_t)(dframe.word3) << 32) )
+#endif
+
+static uint16_t  tepht_debug_frame_db[TEPHT_DEBUG_FRAME_DB_ROW_CAPACITY*3];
+
+// Below we have a bitfield layout that supports:
+//
+// Files with up to (2^18 = 262144) lines.
+// Function count (project-wide) up to (2^18 = 262144).
+// File count up to (2^12 = 4096).
+//
+// And so, as long as the project stays within those limits, we can save some
+// memory and store every line of debug information with about 48 bits each
+// (not including the string pointers referenced by these handles --
+// which is a separate problem).
+//
+
+#define tepht_dframe_to_u64(d0,d1,d2) ( \
+	((uint64_t)(d0) <<  0) | \
+	((uint64_t)(d1) << 16) | \
+	((uint64_t)(d2) << 32) )
+
+#define tepht_dframe_get_line_number(d0,d1,d2)    ((tepht_dframe_to_u64(d0,d1,d2) & 0x00000003FFFFu) >>  0)
+#define tepht_dframe_get_function_handle(d0,d1,d2) ((tepht_dframe_to_u64(d0,d1,d2) & 0x000FFFFC0000u) >> 18)
+#define tepht_dframe_get_filename_handle(d0,d1,d2) ((tepht_dframe_to_u64(d0,d1,d2) & 0xFFF000000000u) >> 36)
+
+size_t  tepht_upsert_debug_filename(const char *filename)
+{
+	// Ugh datastructures.
+	// Need a sublinear find-and-insert-as-needed algorithm.
+}
+
+tepht_dframe_handle  tepht_upsert_debug_location_to_dframe(const char *filename, const char *function_name, size_t  line_number)
+{
+	
+}
+
+#endif
+
+
 // This table exists as an optimization.
 // It allows us to return filename information as an 8-bit index into this
 // array, as opposed to a 32-bit or 64-bit pointer. In most cases this wouldn't

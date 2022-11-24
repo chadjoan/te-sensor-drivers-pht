@@ -5,6 +5,30 @@
 #include <stddef.h>
 #include <inttypes.h>
 
+#if 0
+// Below is part of an abandoned-but-tempting way to store debug information
+// in a compiler-and-platform-agnostic manner. However, getting it to work
+// in a way that's both efficient and safe (ex: for critical software) might
+// require static analysis tools, and using those static analysis tools as
+// part of the project's build process (e.g. to learn how many functions
+// there are and how many times we might need to store {line,file,func} rows).
+
+// Current proces for sizing this parameter is to run this command from this
+// project's directory:
+//   grep -P '\b([a-zA-Z0-9]+)_(error|success)\b' ./* | wc -l
+// This will count all instances of things like `ms8607_error(...)`, since
+// every appearance of that macro can potentially add one row to this database.
+// The pathological scenario is that some program manages to somehow get
+// every single error in the library to be emitted, which would add a row
+// for every one of those instances. If we can still have space left over
+// even after that happens, then we will never run out.
+#ifndef TEPHT_DEBUG_FRAME_DB_ROW_CAPACITY
+#define TEPHT_DEBUG_FRAME_DB_ROW_CAPACITY ((size_t)128)
+#endif
+
+typedef uint16_t  tepht_dframe_handle;
+#endif
+
 /// \brief   Boolean type with predictable storage size.
 ///
 /// \details This type is used instead of <stdbool.h>'s `bool` type, as the `bool`
