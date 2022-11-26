@@ -839,6 +839,162 @@ static void unittest_print_error(tepht_string_printer  *printer)
 }
 
 
+static tepht_status_u16
+	i2c_controller_read_unimpl(void *caller_context, tepht_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return tepht_status_i2c_read_unimplemented;
+}
+
+static tepht_status_u16
+	i2c_controller_write_unimpl(void *caller_context, tepht_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return tepht_status_i2c_write_unimplemented;
+}
+
+static tepht_status_u16
+	i2c_controller_write_no_stop_unimpl(void *caller_context, tepht_i2c_controller_packet *const packet)
+{
+	(void)caller_context;
+	(void)packet;
+	return tepht_status_i2c_write_no_stop_unimplemented;
+}
+
+static tepht_status_u16
+	sleep_ms_unimpl(void *caller_context, uint32_t milliseconds)
+{
+	(void)caller_context;
+	(void)milliseconds;
+	return tepht_status_sleep_ms_unimplemented;
+}
+
+static void print_string_stub(void *caller_context, const char *text)
+{
+	(void)caller_context;
+	(void)text;
+}
+
+static void print_int64_stub(void *caller_context,  int64_t number, uint8_t pad_width,  tepht_bool  pad_with_zeroes)
+{
+	(void)caller_context;
+	(void)number;
+	(void)pad_width;
+	(void)pad_with_zeroes;
+}
+
+/// \brief Initializes the `ms8607_host_functions` struct; this should be called
+///        *before* assigning function pointers into the structure.
+///
+static tepht_error_info  tepht_init_host_functions(tepht_host_functions *deps)
+{
+	if ( deps == NULL )
+		return tepht_error(NULL, tepht_status_null_argument);
+
+	deps->validated_ = 0;
+
+	deps->i2c_controller_read           = &i2c_controller_read_unimpl;
+	deps->i2c_controller_write          = &i2c_controller_write_unimpl;
+	deps->i2c_controller_write_no_stop  = &i2c_controller_write_no_stop_unimpl;
+	deps->sleep_ms                      = &sleep_ms_unimpl;
+	deps->print_string                  = &print_string_stub;
+	deps->print_int64                   = &print_int64_stub;
+
+	return tepht_success(NULL);
+}
+
+tepht_status  tepht_validate_mandatory_depends(tepht_host_functions *deps)
+{
+	assert(deps != NULL);
+
+	if ( deps->validated_ )
+		return tepht_status_ok;
+
+	if ( deps->i2c_controller_read == NULL
+	||   deps->i2c_controller_read == &i2c_controller_read_unimpl )
+		return tepht_status_i2c_read_unimplemented;
+	else
+	if ( deps->i2c_controller_write == NULL
+	||   deps->i2c_controller_write == &i2c_controller_write_unimpl )
+		return tepht_status_i2c_write_unimplemented;
+	/*
+	// It's actually OK to be missing the `i2c_controller_write_no_stop` function.
+	// The write-no-stop function is only needed for hold-mode ADC.
+	// So we shouldn't validate this one until the caller actually tries to
+	// use the hold-mode feature. In most cases, the caller won't need this,
+	// and in some of those cases, the caller *can't* provide this (ex:
+	// because their MCU's I2C peripheral doesn't allow sending a transmit
+	// sequence without the trailing `stop` bit).
+	// TODO: Maybe a -D macro could be provided to enable early checking of this?
+	// TODO: Sort of like USE-flags on Gentoo systems... USE_HOLD implies RDEPENDS={$RDEPENDS, write-no-stop}
+	else
+	if ( deps->i2c_controller_write_no_stop == NULL
+	||   deps->i2c_controller_write_no_stop == &i2c_controller_write_no_stop_unimpl )
+		return tepht_status_i2c_write_no_stop_unimplemented;
+	*/
+	else
+	if ( deps->sleep_ms == NULL
+	||   deps->sleep_ms == &sleep_ms_unimpl )
+		return tepht_status_sleep_ms_unimplemented;
+
+	// Under no condition should any of the function pointers be NULL.
+	// Even unimplemented things should be assigned error handlers or stubs
+	// by the `ms8607_init_host_functions` function.
+	if( deps->i2c_controller_read == NULL
+	||  deps->i2c_controller_write == NULL
+	||  deps->i2c_controller_write_no_stop == NULL
+	||  deps->sleep_ms == NULL
+	||  deps->print_string == NULL
+	||  deps->print_int64 == NULL )
+		return tepht_status_null_host_function;
+
+	// If we've made it to the end of this function, then it is at least plausible
+	// that the driver can use this host functions object to do *something*.
+	// (More specific features of the driver might require functions that we
+	// didn't check here. However, absent a more complicated configuration system,
+	// we'll just have to check those later, at point-of-use.)
+	deps->validated_ = 1;
+	return tepht_status_ok;
+}
+
+//
+// TODO: Finish rewriting docs; might need to move some (or all) validation
+//       into the `*_init_sensor` functions. (Probably not all of it.
+//       library-wide universal dependencies should be checked as early
+//       as possible!)
+tepht_error_info  tepht_init_and_assign_host_functions(
+	tepht_host_functions *dependencies,
+	void *caller_context,
+	void (*assign_functions)(tepht_host_functions *dependencies, void *caller_context)
+	)
+{
+	tepht_error_info  einfo;
+
+	// The call to `tepht_init_host_functions` will enforce that `dependencies` is non-NULL.
+	einfo = tepht_init_host_functions(dependencies);
+	if ( tepht_is_error(einfo) )
+		return einfo;
+
+	// It's OK if `caller_context` is NULL.
+	// Whether that's required to be non-NULL or not is up to the caller, so
+	// they would have to enforce that from within `assign_functions`, if they
+	// wanted such a thing.
+	// (`caller_context` being NULL is actually pretty likely, in this case!
+	// The host functions are likely to be known at compile-time, so it
+	// would be unnecessary to use the dynamic (run-time) information
+	// referenced by the `caller_context` object to compute their values.)
+
+	assign_functions(dependencies, caller_context);
+
+	tepht_status  status = tepht_validate_mandatory_depends(dependencies);
+	if ( status != tepht_status_ok )
+		return tepht_error(NULL, status);
+
+	return tepht_success(NULL);
+}
+
 tepht_bool  tepht_pt_sensor_is_connected(tepht_pt_sensor  sensor,  void *caller_context)
 {
 	assert(sensor.self != NULL);
