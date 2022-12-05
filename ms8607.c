@@ -152,8 +152,8 @@ static const char *ms8607_get_driver_prefix(void *ms8607_sensor) {
 
 static tepht_driver_context_accessor_vtable  ms8607_dca_vtable =
 	{
-		.get_device_model_name = ms8607_get_device_model_name,
-		.get_driver_prefix     = ms8607_get_driver_prefix
+		.get_device_model_name = &ms8607_get_device_model_name,
+		.get_driver_prefix     = &ms8607_get_driver_prefix
 	};
 
 static tepht_driver_context_accessor  ms8607_default_dca =
