@@ -409,14 +409,53 @@ static const char *tepht_filenames[] = {
 	"tepht_common.c"
 };
 
+static const char *get_basename(const char *filename)
+{
+	if ( filename == NULL )
+		return NULL;
+
+	size_t     i = 0;
+	const char *basename_start = filename;
+
+	while(filename[i] != '\0')
+	{
+		if ( filename[i] == '/' )
+			basename_start = &filename[i+1];
+		i++;
+	}
+
+	return basename_start;
+}
+
+static void unittest_get_basename(tepht_string_printer  *printer)
+{
+	tepht_print_array_string(printer, "  unittest_get_basename:");
+
+	assert( NULL == get_basename(NULL) );
+	assert( 0 == strcmp("", get_basename("")) );
+	assert( 0 == strcmp("foo", get_basename("foo")) );
+	assert( 0 == strcmp("bar", get_basename("foo/bar")) );
+	assert( 0 == strcmp("baz", get_basename("foo/bar/baz")) );
+	assert( 0 == strcmp("qux", get_basename("/qux")) );
+	assert( 0 == strcmp("qux", get_basename("/foo/qux")) );
+
+	assert( 0 == strcmp("ms8607.c", get_basename("ms8607.c")) );
+	assert( 0 == strcmp("ms8607.c", get_basename("te-sensor-drivers-pht/ms8607.c")) );
+	assert( 0 == strcmp("ms8607.c", get_basename("some/path/te-sensor-drivers-pht/ms8607.c")) );
+	assert( 0 == strcmp("ms8607.c", get_basename("/abs/path/te-sensor-drivers-pht/ms8607.c")) );
+
+	tepht_print_array_string(printer, "  Passed.\n");
+}
+
 static uint8_t filename_to_index(const char *filename)
 {
+	const char *basename = get_basename(filename);
 	uint8_t len = (sizeof(tepht_filenames) / sizeof(tepht_filenames[0]));
 	uint8_t i;
 	for ( i = 0; i < len; i++ )
 	{
 		const char *candidate = tepht_filenames[i];
-		if ( 0 == strcmp(filename, candidate) )
+		if ( 0 == strcmp(basename, candidate) )
 			break;
 	}
 
@@ -441,6 +480,9 @@ static void unittest_filename_indexes(tepht_string_printer  *printer)
 
 	assert(0 == filename_to_index("foo"));
 	assert(1 == filename_to_index("ms5840.c"));
+	assert(2 == filename_to_index("te-sensor-drivers-pht/ms8607.c"));
+	assert(2 == filename_to_index("some/path/te-sensor-drivers-pht/ms8607.c"));
+	assert(2 == filename_to_index("/abs/path/te-sensor-drivers-pht/ms8607.c"));
 
 	assert(0 == strcmp(index_to_filename(255), "invalid_filename_index"));
 	assert(0 == strcmp(index_to_filename(0), "filename_not_provided"));
@@ -1021,6 +1063,7 @@ void tepht_run_unittests(tepht_string_printer  *printer)
 {
 	tepht_print_array_string(printer, "Running unittests for " __FILE__ ":\n");
 	unittest_int_to_str(printer);
+	unittest_get_basename(printer);
 	unittest_filename_indexes(printer);
 	unittest_buffer_printer(printer);
 	unittest_print_error(printer);
