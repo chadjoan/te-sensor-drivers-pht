@@ -226,6 +226,8 @@ tepht_error_info  ms8607_init_sensor(ms8607_sensor *new_sensor,  tepht_host_func
 
 	ms8607_sensor  const_init_sensor = {
 		.host_funcs                  = depends_to_use,
+		.context_accessor.self       = new_sensor,
+		.context_accessor.vtable     = &ms8607_dca_vtable,
 
 		// Defaults
 		.hsensor_conversion_time     = HSENSOR_CONVERSION_TIME_12b,
